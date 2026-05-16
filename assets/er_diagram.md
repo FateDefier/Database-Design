@@ -1,4 +1,4 @@
-# ER Diagram - E-Commerce Database System
+# ER 图 — 电商数据库系统
 
 ```mermaid
 erDiagram
@@ -47,21 +47,21 @@ erDiagram
         int parent_id FK
     }
 
-    USER ||--o{ ORDER : "places"
-    USER ||--o{ ADDRESS : "has"
-    ORDER ||--o{ ORDER_ITEM : "contains"
-    PRODUCT ||--o{ ORDER_ITEM : "appears in"
-    CATEGORY ||--o{ PRODUCT : "belongs to"
-    CATEGORY ||--o{ CATEGORY : "parent-child"
+    USER ||--o{ ORDER : "下单"
+    USER ||--o{ ADDRESS : "拥有"
+    ORDER ||--o{ ORDER_ITEM : "包含"
+    PRODUCT ||--o{ ORDER_ITEM : "出现在"
+    CATEGORY ||--o{ PRODUCT : "属于"
+    CATEGORY ||--o{ CATEGORY : "父子关系"
 ```
 
-## Relationship Summary
+## 关系汇总
 
-| Relationship | Type | Description |
-|--------------|------|-------------|
-| USER → ORDER | One-to-Many | A user can place multiple orders |
-| USER → ADDRESS | One-to-Many | A user can have multiple addresses |
-| ORDER → ORDER_ITEM | One-to-Many | An order can contain multiple items |
-| PRODUCT → ORDER_ITEM | One-to-Many | A product can appear in multiple order items |
-| CATEGORY → PRODUCT | One-to-Many | A category can contain multiple products |
-| CATEGORY → CATEGORY | Self-referencing | Categories can have parent categories (hierarchy) |
+| 关系 | 类型 | 说明 |
+|------|------|------|
+| USER → ORDER | 一对多 | 一个用户可以有多个订单 |
+| USER → ADDRESS | 一对多 | 一个用户可以有多个地址 |
+| ORDER → ORDER_ITEM | 一对多 | 一个订单可以有多个订单项 |
+| PRODUCT → ORDER_ITEM | 一对多 | 一个商品可以出现在多个订单项中 |
+| CATEGORY → PRODUCT | 一对多 | 一个分类可以包含多个商品 |
+| CATEGORY → CATEGORY | 自引用 | 分类可以有父分类（层级结构） |

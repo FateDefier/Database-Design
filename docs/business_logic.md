@@ -1,57 +1,57 @@
-# Business Logic
+# 业务逻辑说明
 
-This document explains the business rules and data flows implemented in the e-commerce database system.
+本文档解释电商数据库系统中实现的业务规则和数据流程。
 
-## Core Business Entities
+## 核心业务实体
 
-### User Lifecycle
+### 用户生命周期
 
 ```
-Registration → Authentication → Browse → Order → Post-Order
+注册 → 认证 → 浏览 → 下单 → 订单处理
 ```
 
-Users register with a phone number and password. They can have multiple shipping addresses, with one marked as default for quick checkout.
+用户通过手机号和密码注册。每个用户可以拥有多个收货地址，其中一个标记为默认地址以便快速结算。
 
-### Product Management
+### 商品管理
 
-Products exist within a category hierarchy. Each product tracks:
-- Current price
-- Available stock
-- Category classification
+商品存在于分类层级中。每个商品跟踪：
+- 当前价格
+- 可用库存
+- 分类归属
 
-Products can be reclassified by changing their `category_id`.
+商品可以通过修改 `category_id` 重新分类。
 
-### Order Processing
+### 订单处理
 
-Orders follow this flow:
+订单遵循以下流程：
 
-1. **Order Creation**: A user creates an order with a calculated total
-2. **Item Addition**: Products are added as order items with quantity and price snapshot
-3. **Inventory Update**: Product stock decreases by ordered quantity
-4. **Order Completion**: Order is finalized with timestamp
+1. **创建订单**：用户创建订单并计算总金额
+2. **添加商品**：商品作为订单项添加，记录数量和价格快照
+3. **更新库存**：商品库存按购买数量减少
+4. **完成订单**：订单最终确认并记录时间戳
 
-### Address Management
+### 地址管理
 
-Users can store multiple addresses. The `is_default` flag allows quick retrieval of the primary shipping address during checkout.
+用户可以存储多个地址。`is_default` 标志允许在结算时快速获取首选收货地址。
 
 ---
 
-## Key Business Rules
+## 核心业务规则
 
-### Rule 1: Price Snapshot Preservation
+### 规则一：价格快照保存
 
-When an order item is created, the current product price is copied into `order_item.price`. This ensures that:
-- Historical orders remain accurate even if product prices change
-- Order totals can be recalculated from line items
-- Price analysis can compare purchase price vs. current price
+创建订单项时，当前商品价格被复制到 `order_item.price`。这确保：
+- 即使商品后续调价，历史订单仍然准确
+- 可以从明细项重新计算订单总金额
+- 可以对比购买价格与当前价格进行分析
 
-### Rule 2: Inventory Management
+### 规则二：库存管理
 
-Product stock must be updated when:
-- An order is placed (stock decreases)
-- An order is cancelled (stock increases)
+以下情况需要更新商品库存：
+- 下单时（库存减少）
+- 取消订单时（库存增加）
 
-The SQL implementation uses UPDATE with JOIN:
+SQL 实现使用 UPDATE JOIN：
 
 ```sql
 UPDATE ecommerce.product
@@ -60,71 +60,71 @@ SET product.stock = product.stock - order_item.num
 WHERE order_item.order_id = ?;
 ```
 
-### Rule 3: Referential Integrity in Deletion
+### 规则三：删除时的参照完整性
 
-Order deletion must follow a specific sequence due to foreign key constraints:
+由于外键约束，删除订单必须遵循特定顺序：
 
-1. Delete order items first (child records)
-2. Then delete the order (parent record)
+1. 先删除订单项（子记录）
+2. 再删除订单（父记录）
 
-Attempting to delete an order without removing its items first will result in a foreign key violation error.
+如果不先删除订单项就直接删除订单，会触发外键约束错误。
 
-### Rule 4: Category Hierarchy
+### 规则四：分类层级
 
-Categories form a tree structure through self-referencing `parent_id`:
-- Top-level categories have `parent_id = NULL`
-- Subcategories reference their parent category
-- This allows flexible classification (e.g., Electronics → Computers → Laptops)
+分类通过自引用的 `parent_id` 形成树形结构：
+- 顶级分类的 `parent_id` 为 NULL
+- 子分类引用其父分类
+- 支持灵活的分类方式（如：电子产品 → 电脑 → 笔记本）
 
-### Rule 5: Default Address
+### 规则五：默认地址
 
-Each user can have one default address (where `is_default = 1`). The system should ensure only one address per user is marked as default.
-
----
-
-## Data Flow Diagrams
-
-### Order Creation Flow
-
-```
-[User] → Creates Order → [Order Table]
-  ↓
-  Selects Products → [Order Item Table]
-  ↓
-  System Updates Stock → [Product Table]
-```
-
-### Order Cancellation Flow
-
-```
-[User] → Cancels Order
-  ↓
-  System Deletes Order Items → [Order Item Table]
-  ↓
-  System Deletes Order → [Order Table]
-  ↓
-  (Optional) System Restores Stock → [Product Table]
-```
-
-### Category Query Flow
-
-```
-[User] → Selects Category
-  ↓
-  System Queries Category Tree → [Category Table]
-  ↓
-  System Retrieves Products → [Product Table]
-  ↓
-  Returns Filtered Results
-```
+每个用户可以有一个默认地址（`is_default = 1`）。系统应确保每个用户只有一个地址被标记为默认。
 
 ---
 
-## Common Query Patterns
+## 数据流程图
 
-### Pattern 1: User Order History
+### 下单流程
 
-Retrieve all orders for a specific user with order details:
+```
+[用户] → 创建订单 → [订单表]
+  ↓
+  选择商品 → [订单项表]
+  ↓
+  系统更新库存 → [商品表]
+```
+
+### 取消订单流程
+
+```
+[用户] → 取消订单
+  ↓
+  系统删除订单项 → [订单项表]
+  ↓
+  系统删除订单 → [订单表]
+  ↓
+  （可选）系统恢复库存 → [商品表]
+```
+
+### 分类查询流程
+
+```
+[用户] → 选择分类
+  ↓
+  系统查询分类树 → [分类表]
+  ↓
+  系统获取商品 → [商品表]
+  ↓
+  返回筛选结果
+```
+
+---
+
+## 常见查询模式
+
+### 模式一：用户订单历史
+
+获取指定用户的所有订单及订单详情：
 
 ```sql
 SELECT o.order_id, o.order_time, o.total,
@@ -136,9 +136,9 @@ WHERE o.user_id = ?
 ORDER BY o.order_time DESC;
 ```
 
-### Pattern 2: Product Sales Statistics
+### 模式二：商品销售统计
 
-Calculate total sales quantity and revenue per product:
+计算每个商品的总销量和总收入：
 
 ```sql
 SELECT p.product_id, p.pname,
@@ -149,9 +149,9 @@ LEFT JOIN order_item oi ON p.product_id = oi.product_id
 GROUP BY p.product_id, p.pname;
 ```
 
-### Pattern 3: Category Product Listing
+### 模式三：分类商品列表
 
-List all products under a category and its subcategories:
+列出某个分类及其子分类下的所有商品：
 
 ```sql
 SELECT p.pname, p.price, c.category_name
@@ -162,9 +162,9 @@ WHERE c.category_name = ? OR c.parent_id = (
 );
 ```
 
-### Pattern 4: User Default Address
+### 模式四：用户默认地址
 
-Quickly retrieve a user's default shipping address:
+快速获取用户的默认收货地址：
 
 ```sql
 SELECT receiver, phone, detail
@@ -174,64 +174,64 @@ WHERE user_id = ? AND is_default = 1;
 
 ---
 
-## Business Scenarios
+## 业务场景
 
-### Scenario 1: New User Registration
+### 场景一：新用户注册
 
-1. User provides name, phone, password
-2. System inserts into `user` table
-3. Phone number uniqueness is enforced by UNIQUE constraint
+1. 用户提供姓名、手机号、密码
+2. 系统插入 `user` 表
+3. 手机号唯一性由 UNIQUE 约束保证
 
-### Scenario 2: Product Purchase
+### 场景二：商品购买
 
-1. User browses products (query `product` table)
-2. User selects products and quantities
-3. System creates order record in `order` table
-4. System creates order items in `order_item` table
-5. System updates product stock in `product` table
+1. 用户浏览商品（查询 `product` 表）
+2. 用户选择商品和数量
+3. 系统在 `order` 表创建订单记录
+4. 系统在 `order_item` 表创建订单项
+5. 系统更新 `product` 表中的商品库存
 
-### Scenario 3: Order Cancellation
+### 场景三：取消订单
 
-1. User requests order cancellation
-2. System deletes order items (respecting foreign key constraints)
-3. System deletes order record
-4. Optionally, system restores product stock
+1. 用户申请取消订单
+2. 系统删除订单项（遵循外键约束）
+3. 系统删除订单记录
+4. 可选：系统恢复商品库存
 
-### Scenario 4: Address Management
+### 场景四：地址管理
 
-1. User adds new address (insert into `address` table)
-2. If marked as default, system should unset other defaults for that user
-3. User can update or delete addresses
+1. 用户添加新地址（插入 `address` 表）
+2. 如果标记为默认地址，系统应取消该用户的其他默认地址
+3. 用户可以更新或删除地址
 
 ---
 
-## Data Consistency Considerations
+## 数据一致性考虑
 
-### Transaction Boundaries
+### 事务边界
 
-For operations that modify multiple tables (like order creation), transactions should be used to ensure atomicity:
+对于修改多个表的操作（如创建订单），应使用事务确保原子性：
 
 ```sql
 START TRANSACTION;
--- Insert order
--- Insert order items
--- Update product stock
+-- 插入订单
+-- 插入订单项
+-- 更新商品库存
 COMMIT;
 ```
 
-### Concurrent Access
+### 并发访问
 
-In a production system, inventory updates would need locking mechanisms to prevent overselling:
+在生产系统中，库存更新需要加锁机制以防止超卖：
 
 ```sql
 SELECT stock FROM product WHERE product_id = ? FOR UPDATE;
--- Check if stock is sufficient
+-- 检查库存是否充足
 UPDATE product SET stock = stock - ? WHERE product_id = ?;
 ```
 
-### Data Validation
+### 数据验证
 
-Application-level validation should check:
-- Stock availability before order creation
-- Price consistency between order item and product
-- User ownership of addresses before modification
+应用层验证应检查：
+- 下单前检查库存是否充足
+- 订单项与商品的价格一致性
+- 修改地址前验证用户所有权

@@ -1,203 +1,203 @@
-# Normalization Notes
+# 规范化设计分析
 
-This document analyzes the database design from a normalization perspective, explaining how the schema adheres to normal forms and the trade-offs involved.
+本文档从规范化角度分析数据库设计，说明模式如何满足范式要求以及相关权衡。
 
-## Normal Forms Overview
+## 范式概览
 
-| Normal Form | Requirement | Status |
-|-------------|-------------|--------|
-| 1NF | Atomic values, no repeating groups | ✓ Achieved |
-| 2NF | 1NF + no partial dependencies | ✓ Achieved |
-| 3NF | 2NF + no transitive dependencies | ✓ Achieved |
-
----
-
-## First Normal Form (1NF)
-
-**Rule**: Each column must contain atomic (indivisible) values, and each row must be unique.
-
-### Analysis
-
-All tables in this design satisfy 1NF:
-
-- **user**: Each column contains single values (name, phone, password)
-- **product**: Each column contains single values (pname, price, stock)
-- **order**: Each column contains single values (user_id, total, order_time)
-- **order_item**: Each column contains single values (order_id, product_id, num, price)
-- **address**: Each column contains single values (receiver, phone, detail)
-- **category**: Each column contains single values (category_name, parent_id)
-
-### Example
-
-The `address` table stores addresses in a single `detail` column rather than splitting into street, city, state, zip. This is acceptable for this project's scope, though a production system might benefit from structured address fields.
+| 范式 | 要求 | 状态 |
+|------|------|------|
+| 1NF | 原子值，无重复组 | ✓ 已满足 |
+| 2NF | 1NF + 无部分依赖 | ✓ 已满足 |
+| 3NF | 2NF + 无传递依赖 | ✓ 已满足 |
 
 ---
 
-## Second Normal Form (2NF)
+## 第一范式（1NF）
 
-**Rule**: Must be in 1NF, and all non-key attributes must be fully dependent on the entire primary key.
+**规则**: 每列必须包含原子（不可再分）值，每行必须唯一。
 
-### Analysis
+### 分析
 
-All tables use single-column primary keys, so partial dependencies are not possible:
+本设计中的所有表均满足 1NF：
 
-- **user**: `user_id` is the sole primary key; all other columns depend on it
-- **product**: `product_id` is the sole primary key; all other columns depend on it
-- **order**: `order_id` is the sole primary key; all other columns depend on it
-- **order_item**: `item_id` is the sole primary key; all other columns depend on it
-- **address**: `addr_id` is the sole primary key; all other columns depend on it
-- **category**: `category_id` is the sole primary key; all other columns depend on it
+- **user**: 每列包含单一值（name, phone, password）
+- **product**: 每列包含单一值（pname, price, stock）
+- **order**: 每列包含单一值（user_id, total, order_time）
+- **order_item**: 每列包含单一值（order_id, product_id, num, price）
+- **address**: 每列包含单一值（receiver, phone, detail）
+- **category**: 每列包含单一值（category_name, parent_id）
 
-### Note on order_item
+### 示例
 
-If `order_item` used a composite primary key `(order_id, product_id)`, we would need to verify that `num` and `price` depend on both columns. Since `item_id` is used as the primary key instead, this concern is avoided.
+`address` 表将地址存储在单个 `detail` 列中，而非拆分为街道、城市、省份、邮编。这在项目范围内是可接受的，但生产系统可能会从结构化地址字段中受益。
 
 ---
 
-## Third Normal Form (3NF)
+## 第二范式（2NF）
 
-**Rule**: Must be in 2NF, and no non-key attribute should depend on another non-key attribute (no transitive dependencies).
+**规则**: 必须满足 1NF，且所有非主属性必须完全依赖于整个主键。
 
-### Analysis
+### 分析
 
-#### user table
+所有表都使用单列主键，因此不存在部分依赖：
+
+- **user**: `user_id` 是唯一主键；其他所有列都依赖于它
+- **product**: `product_id` 是唯一主键；其他所有列都依赖于它
+- **order**: `order_id` 是唯一主键；其他所有列都依赖于它
+- **order_item**: `item_id` 是唯一主键；其他所有列都依赖于它
+- **address**: `addr_id` 是唯一主键；其他所有列都依赖于它
+- **category**: `category_id` 是唯一主键；其他所有列都依赖于它
+
+### 关于 order_item 的说明
+
+如果 `order_item` 使用复合主键 `(order_id, product_id)`，需要验证 `num` 和 `price` 是否同时依赖于两列。由于使用 `item_id` 作为主键，避免了这个问题。
+
+---
+
+## 第三范式（3NF）
+
+**规则**: 必须满足 2NF，且非主属性不应依赖于其他非主属性（无传递依赖）。
+
+### 分析
+
+#### user 表
 - `user_id` → `name`, `phone`, `password`
-- No transitive dependencies exist
+- 不存在传递依赖
 
-#### product table
+#### product 表
 - `product_id` → `pname`, `price`, `stock`, `category_id`
-- `category_id` → `category_name` (but this is a foreign key, not a transitive dependency)
-- The category name is stored in the `category` table, not in `product`
+- `category_id` → `category_name`（但这是外键，不是传递依赖）
+- 分类名称存储在 `category` 表中，而非 `product`
 
-#### order table
+#### order 表
 - `order_id` → `user_id`, `total`, `order_time`
-- `user_id` → `name` (but this is stored in the `user` table, not in `order`)
-- No transitive dependencies exist
+- `user_id` → `name`（但存储在 `user` 表中，不在 `order`）
+- 不存在传递依赖
 
-#### order_item table
+#### order_item 表
 - `item_id` → `order_id`, `product_id`, `num`, `price`
-- No transitive dependencies exist
+- 不存在传递依赖
 
-#### address table
+#### address 表
 - `addr_id` → `user_id`, `receiver`, `phone`, `detail`, `is_default`
-- No transitive dependencies exist
+- 不存在传递依赖
 
-#### category table
+#### category 表
 - `category_id` → `category_name`, `parent_id`
-- `parent_id` → `parent_category_name` (but this is stored via self-reference, not duplicated)
-- No transitive dependencies exist
+- `parent_id` → `parent_category_name`（但通过自引用存储，无重复）
+- 不存在传递依赖
 
 ---
 
-## Design Decisions and Trade-offs
+## 设计决策与权衡
 
-### Decision 1: Price Snapshot in order_item
+### 决策一：order_item 中的价格快照
 
-**Choice**: Store `price` in `order_item` even though it's also in `product`.
+**选择**: 在 `order_item` 中存储 `price`，尽管 `product` 表中也有价格。
 
-**Justification**: This is a deliberate denormalization for business reasons:
-- Historical orders must reflect the price at time of purchase
-- Product prices may change after orders are placed
-- Order totals can be recalculated from line items
+**理由**: 这是出于业务需要的有意反规范化：
+- 历史订单必须反映下单时的价格
+- 商品价格可能在下单后发生变化
+- 可以从明细项重新计算订单总金额
 
-**Impact**: Slight redundancy, but ensures data accuracy for historical records.
+**影响**: 轻微冗余，但确保历史记录的数据准确性。
 
-### Decision 2: Order Total in order table
+### 决策二：order 表中的订单总额
 
-**Choice**: Store `total` in `order` even though it can be calculated from `order_item`.
+**选择**: 在 `order` 中存储 `total`，尽管可以从 `order_item` 计算得出。
 
-**Justification**: This is another deliberate denormalization:
-- Avoids recalculating totals for every order query
-- Provides a quick reference for order value
-- Can be used for validation (compare stored total vs. calculated total)
+**理由**: 这是另一个有意的反规范化：
+- 避免每次查询订单时重新计算总金额
+- 提供订单金额的快速参考
+- 可用于验证（对比存储的总金额与计算的总金额）
 
-**Impact**: Potential inconsistency if order items are modified without updating total.
+**影响**: 如果修改订单项但未更新总金额，可能导致不一致。
 
-### Decision 3: Category Hierarchy via Self-Reference
+### 决策三：通过自引用实现分类层级
 
-**Choice**: Use `parent_id` self-referencing instead of separate parent/child tables.
+**选择**: 使用 `parent_id` 自引用，而非单独的父子表。
 
-**Justification**:
-- Simple implementation for tree structures
-- Allows unlimited nesting depth
-- Easy to query direct children or parents
+**理由**:
+- 树形结构的简单实现
+- 支持无限层级嵌套
+- 便于查询直接子节点或父节点
 
-**Trade-offs**:
-- Querying all descendants requires recursive queries or multiple joins
-- No built-in constraint to prevent circular references
+**权衡**:
+- 查询所有后代需要递归查询或多表连接
+- 没有内置约束防止循环引用
 
-### Decision 4: Single Address Table
+### 决策四：单地址表
 
-**Choice**: Store all addresses in one table with `user_id` foreign key.
+**选择**: 将所有地址存储在一个表中，通过 `user_id` 外键关联。
 
-**Justification**:
-- Simple one-to-many relationship
-- Easy to query all user addresses
-- `is_default` flag allows quick default address retrieval
+**理由**:
+- 简单的一对多关系
+- 便于查询用户的所有地址
+- `is_default` 标志支持快速获取默认地址
 
-**Alternative Considered**: Separate tables for billing and shipping addresses. Rejected as unnecessary complexity for this project scope.
-
----
-
-## Potential Normalization Issues
-
-### Issue 1: Password Storage
-
-**Current**: Passwords stored in plaintext in `user` table.
-
-**Problem**: Security vulnerability. Passwords should be hashed.
-
-**Recommendation**: In a production system, store password hashes instead of plaintext passwords.
-
-### Issue 2: Address Structure
-
-**Current**: Address stored as single `detail` string.
-
-**Problem**: Difficult to query by city, state, or zip code.
-
-**Recommendation**: For a production system, consider splitting into structured fields (street, city, state, zip_code, country).
-
-### Issue 3: Category Hierarchy Depth
-
-**Current**: Self-referencing allows unlimited depth.
-
-**Problem**: Deep hierarchies require complex recursive queries.
-
-**Recommendation**: Consider limiting depth or using a materialized path pattern for frequently queried hierarchies.
+**考虑过的替代方案**: 将账单地址和收货地址分开存储。因项目范围内不必要的复杂性而放弃。
 
 ---
 
-## Normalization Benefits in This Design
+## 潜在的规范化问题
 
-### Data Consistency
+### 问题一：密码存储
 
-- User information is stored once in the `user` table
-- Product information is stored once in the `product` table
-- Category information is stored once in the `category` table
-- No redundant storage of user names, product names, or category names
+**现状**: 密码以明文形式存储在 `user` 表中。
 
-### Update Anomalies
+**问题**: 安全漏洞。密码应该加密存储。
 
-- Changing a user's name requires updating only one row in the `user` table
-- Changing a product's price requires updating only one row in the `product` table
-- No risk of inconsistent data due to multiple copies
+**建议**: 在生产系统中，应存储密码哈希值而非明文密码。
 
-### Insert Anomalies
+### 问题二：地址结构
 
-- New products can be added without creating orders
-- New users can be registered without placing orders
-- New categories can be created without assigning products
+**现状**: 地址存储为单个 `detail` 字符串。
 
-### Delete Anomalies
+**问题**: 难按城市、省份或邮编进行查询。
 
-- Deleting an order doesn't affect the product catalog
-- Deleting a product doesn't affect historical orders (due to price snapshot)
-- Deleting a user doesn't affect product or category data
+**建议**: 对于生产系统，考虑拆分为结构化字段（街道、城市、省份、邮编、国家）。
+
+### 问题三：分类层级深度
+
+**现状**: 自引用允许无限深度。
+
+**问题**: 深层级需要复杂的递归查询。
+
+**建议**: 考虑限制深度或使用物化路径模式处理频繁查询的层级结构。
 
 ---
 
-## Conclusion
+## 本设计中的规范化收益
 
-The database design successfully achieves Third Normal Form (3NF) while making deliberate denormalization choices where business requirements justify them. The price snapshot in `order_item` and the total in `order` are conscious decisions to prioritize data accuracy and query performance over strict normalization.
+### 数据一致性
 
-The self-referencing category hierarchy is a standard pattern for tree structures in relational databases, trading query complexity for implementation simplicity.
+- 用户信息仅在 `user` 表中存储一次
+- 商品信息仅在 `product` 表中存储一次
+- 分类信息仅在 `category` 表中存储一次
+- 用户名、商品名、分类名无冗余存储
+
+### 更新异常
+
+- 修改用户名只需更新 `user` 表中的一行
+- 修改商品价格只需更新 `product` 表中的一行
+- 不存在因多份副本导致数据不一致的风险
+
+### 插入异常
+
+- 可以在不创建订单的情况下添加新商品
+- 可以在不下单的情况下注册新用户
+- 可以在不分配商品的情况下创建新分类
+
+### 删除异常
+
+- 删除订单不影响商品目录
+- 删除商品不影响历史订单（由于价格快照）
+- 删除用户不影响商品或分类数据
+
+---
+
+## 总结
+
+本数据库设计成功满足第三范式（3NF），同时在业务需求合理的前提下做出了有意的反规范化选择。`order_item` 中的价格快照和 `order` 中的订单总额是优先考虑数据准确性和查询性能而非严格规范化的自觉决策。
+
+自引用的分类层级是关系数据库中树形结构的标准模式，以查询复杂度换取实现简洁性。
