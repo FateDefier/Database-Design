@@ -1,5 +1,7 @@
 # E-Commerce Database System
 
+English | [中文](README.zh-CN.md)
+
 A MySQL-based database system design project that models core e-commerce business scenarios, including user management, product catalog, order processing, and address management.
 
 ## Project Overview
